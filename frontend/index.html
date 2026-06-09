@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鼠鼠偷吃 — 三角洲行动</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Header -->
+<header class="top-bar">
+  <div class="user-id-bar">
+    <span class="label">干员</span>
+    <input type="text" id="userIdInput" value="default" maxlength="30" placeholder="输入ID">
+    <button id="saveIdBtn" title="保存">&#10003;</button>
+  </div>
+  <div class="eco-brief" id="ecoBrief">
+    <span class="hafubi">&#x1F4B0; <span id="headerValue">0</span></span>
+    <span class="menggong-badge" id="headerMenggong" style="display:none">&#x1F525; 猛攻</span>
+    <span class="auto-badge" id="headerAuto" style="display:none">&#x1F916; 自动</span>
+    <button id="adminBtn" class="btn-admin" title="管理员设置">&#x2699;</button>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main id="mainContent">
+  <!-- Page: Touchi -->
+  <section id="pageTouchi" class="page active">
+    <div class="touchi-center">
+      <button id="touchiBtn" class="btn-touchi">
+        <span class="btn-icon">&#x1F4E6;</span>
+        <span class="btn-text">偷 吃</span>
+      </button>
+      <div id="cooldownOverlay" class="cooldown-overlay hidden">
+        <svg viewBox="0 0 120 120" class="cooldown-ring">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#333" stroke-width="6"/>
+          <circle id="cooldownCircle" cx="60" cy="60" r="54" fill="none" stroke="#4caf50" stroke-width="6"
+                  stroke-dasharray="339.292" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+        </svg>
+        <span id="cooldownTimer" class="cooldown-timer">60s</span>
+      </div>
+    </div>
+
+    <div id="resultArea" class="result-area hidden">
+      <div id="eventMessage" class="event-msg hidden"></div>
+      <img id="resultGif" class="result-gif" src="" alt="偷吃结果">
+      <div class="result-info">
+        <div class="result-value">总价值: <strong id="resultValue">0</strong></div>
+        <div class="result-profit hidden" id="resultProfit">本次收益: 0 哈夫币</div>
+        <div class="result-items hidden" id="resultItems"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page: Collection -->
+  <section id="pageCollection" class="page">
+    <h2>图鉴 <span id="collProgress" class="progress-text"></span></h2>
+    <div class="collection-grid" id="collectionGrid"></div>
+  </section>
+
+  <!-- Page: Warehouse -->
+  <section id="pageWarehouse" class="page">
+    <h2>仓库 & 特勤处</h2>
+    <div class="warehouse-card">
+      <div class="stat-row">
+        <span class="stat-label">哈夫币</span>
+        <span class="stat-value" id="whValue">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">特勤处等级</span>
+        <span class="stat-value" id="whLevel">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">背包格子</span>
+        <span class="stat-value" id="whGrid">2x2</span>
+      </div>
+      <button class="btn-upgrade" id="btnUpgrade">升级特勤处</button>
+    </div>
+
+    <div class="warehouse-card">
+      <h3>六套猛攻</h3>
+      <p class="desc">消耗 3,000,000 哈夫币，2 分钟内无蓝装、金红爆率翻倍</p>
+      <div id="menggongStatus" class="menggong-status">
+        <span>状态: 未激活</span>
+      </div>
+      <button class="btn-menggong" id="btnMenggong">激活猛攻 (300万)</button>
+    </div>
+
+    <div class="warehouse-card">
+      <h3>自动偷吃</h3>
+      <p class="desc">每 10 分钟偷吃一次，持续 4 小时，爆率下降</p>
+      <div id="autoStatus" class="auto-status">
+        <span>状态: 未开启</span>
+      </div>
+      <button class="btn-auto" id="btnAutoToggle">开启自动偷吃</button>
+    </div>
+  </section>
+</main>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-page="pageTouchi">
+    <span class="nav-icon">&#x1F4E6;</span> 偷吃
+  </button>
+  <button class="nav-btn" data-page="pageCollection">
+    <span class="nav-icon">&#x1F4D6;</span> 图鉴
+  </button>
+  <button class="nav-btn" data-page="pageWarehouse">
+    <span class="nav-icon">&#x1F3EC;</span> 仓库
+  </button>
+</nav>
+
+<!-- Admin: Token Modal -->
+<div id="adminTokenModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>管理员验证</h3>
+    <p class="modal-desc">请输入管理员token</p>
+    <input type="password" id="adminTokenInput" class="modal-input" placeholder="token">
+    <div class="modal-btns">
+      <button id="adminTokenSubmit" class="btn-modal-primary">确认</button>
+      <button id="adminTokenCancel" class="btn-modal-cancel">取消</button>
+    </div>
+    <div id="adminTokenError" class="modal-error hidden"></div>
+  </div>
+</div>
+
+<!-- Admin: Settings Modal -->
+<div id="adminSettingsModal" class="modal-overlay hidden">
+  <div class="modal-box modal-wide">
+    <h3>管理员设置</h3>
+    <div class="admin-form">
+      <fieldset>
+        <legend>偷吃冷却</legend>
+        <div class="form-row">
+          <label>最小 (秒) <input type="number" id="cfg_cooldown_min" class="cfg-input" min="1"></label>
+          <label>最大 (秒) <input type="number" id="cfg_cooldown_max" class="cfg-input" min="1"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>正常模式爆率</legend>
+        <div class="form-row">
+          <label>蓝 <input type="number" id="cfg_rate_blue" class="cfg-input" min="0" max="1" step="0.01"></label>
+          <label>紫 <input type="number" id="cfg_rate_purple" class="cfg-input" min="0" max="1" step="0.01"></label>
+          <label>金 <input type="number" id="cfg_rate_gold" class="cfg-input" min="0" max="1" step="0.01"></label>
+          <label>红 <input type="number" id="cfg_rate_red" class="cfg-input" min="0" max="1" step="0.01"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>六套猛攻</legend>
+        <div class="form-row">
+          <label>持续 (秒) <input type="number" id="cfg_menggong_duration" class="cfg-input" min="1"></label>
+        </div>
+        <div class="form-row">
+          <label>紫 <input type="number" id="cfg_menggong_rate_purple" class="cfg-input" min="0" max="1" step="0.01"></label>
+          <label>金 <input type="number" id="cfg_menggong_rate_gold" class="cfg-input" min="0" max="1" step="0.01"></label>
+          <label>红 <input type="number" id="cfg_menggong_rate_red" class="cfg-input" min="0" max="1" step="0.01"></label>
+        </div>
+        <p class="form-note">猛攻模式下蓝装爆率固定为 0</p>
+      </fieldset>
+    </div>
+    <div class="modal-btns">
+      <button id="adminSettingsSave" class="btn-modal-primary">保存设置</button>
+      <button id="adminSettingsClose" class="btn-modal-cancel">关闭</button>
+    </div>
+    <div id="adminSettingsMsg" class="modal-msg hidden"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="/js/utils.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/pages/touchi.js"></script>
+<script src="/js/pages/collection.js"></script>
+<script src="/js/pages/warehouse.js"></script>
+<script src="/js/pages/admin.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

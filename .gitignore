@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Project specific
+backend/data/*.db
+backend/output/*.gif
+backend/output/*.png
+workspace/packages/
+
+# OS
+.DS_Store
+Thumbs.db

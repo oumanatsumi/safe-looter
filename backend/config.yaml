@@ -1,0 +1,31 @@
+# 三角洲行动「偷吃」配置文件
+# 环境变量优先级更高，会覆盖此文件中的值
+
+# 数据库路径
+db_path: data/collection.db
+
+# 资源目录
+items_dir: resources/items
+expressions_dir: resources/expressions
+output_dir: output
+
+# 服务器
+host: 127.0.0.1
+port: 5000
+
+# 管理员
+admin_token: admin123
+
+# 游戏参数
+default_grid_size: 2
+max_teqin_level: 5
+mengong_cost: 3000000
+mengong_base_duration: 120
+
+# 自动偷吃
+auto_touchi_interval: 600
+auto_touchi_max_duration: 14400
+
+# 数据库同步
+db_busy_timeout: 5000
+db_write_retries: 3

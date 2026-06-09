@@ -1,0 +1,25 @@
+[Unit]
+Description=touchi - 鼠鼠偷吃 backend
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/touchi/backend
+ExecStart=/opt/touchi/backend/venv/bin/gunicorn wsgi:app \
+    --workers 2 \
+    --bind 127.0.0.1:5000 \
+    --timeout 120 \
+    --access-logfile /var/log/touchi/gunicorn-access.log \
+    --error-logfile /var/log/touchi/gunicorn-error.log \
+    --log-level info
+Restart=always
+RestartSec=5
+
+# Security
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

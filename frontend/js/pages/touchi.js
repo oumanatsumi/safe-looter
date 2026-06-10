@@ -87,38 +87,33 @@ async function doTouchi() {
       eventDiv.classList.add('hidden');
     }
 
-    // Build safe grid with items
-    buildSafeGrid(data);
-
-    // Show expression
-    const exprImg = document.getElementById('resultExpression');
-    const expressions = { eat: 'eat', happy: 'happy', cry: 'cry' };
-    const exprKey = expressions[data.expression] || 'cry';
-    exprImg.src = `/resources/expressions/${exprKey}.png`;
-    exprImg.style.display = '';
-
-    // Update value info
-    document.getElementById('resultValue').textContent = fmt(data.total_value);
-
-    const profitEl = document.getElementById('resultProfit');
-    if (data.total_profit > 0) {
-      profitEl.textContent = `本次收益: +${fmt(data.total_profit)} 哈夫币`;
-      profitEl.classList.remove('hidden');
-    } else {
-      profitEl.classList.add('hidden');
-    }
-
-    // Build item cards below the grid
-    const itemsDiv = document.getElementById('resultItems');
-    itemsDiv.innerHTML = data.items.map(it => `
-      <div class="result-item level-${it.level}">
-        <img src="${it.image_url}" alt="${it.name}" loading="lazy">
-        <span class="item-name">${it.name}</span>
-        <span class="item-value" style="color:${levelColor(it.level)}">${fmt(it.value)}</span>
-      </div>
-    `).join('');
-
+    // Show result area (grid visible immediately, items hidden until animation done)
     resultArea.classList.remove('hidden');
+
+    // Build safe grid & animate — callbacks fire after all items revealed
+    buildSafeGrid(data, () => {
+      // Update value info and show item list after animation completes
+      document.getElementById('resultValue').textContent = fmt(data.total_value);
+
+      const profitEl = document.getElementById('resultProfit');
+      if (data.total_profit > 0) {
+        profitEl.textContent = `本次收益: +${fmt(data.total_profit)} 哈夫币`;
+        profitEl.classList.remove('hidden');
+      } else {
+        profitEl.classList.add('hidden');
+      }
+
+      // Build item cards below the grid
+      const itemsDiv = document.getElementById('resultItems');
+      itemsDiv.innerHTML = data.items.map(it => `
+        <div class="result-item level-${it.level}">
+          <img src="${it.image_url}" alt="${it.name}" loading="lazy">
+          <span class="item-name">${it.name}</span>
+          <span class="item-value" style="color:${levelColor(it.level)}">${fmt(it.value)}</span>
+        </div>
+      `).join('');
+      itemsDiv.classList.remove('hidden');
+    });
 
     // Refresh header economy
     App.refreshHeader();
@@ -131,7 +126,7 @@ async function doTouchi() {
 }
 
 /** Build the CSS grid with item slots and animate reveal sequence */
-function buildSafeGrid(data) {
+function buildSafeGrid(data, onComplete) {
   const gridEl = document.getElementById('safeGrid');
   const gridSize = data.grid_size || 2;
   const cellSize = Math.min(100, Math.floor(300 / gridSize));
@@ -153,6 +148,19 @@ function buildSafeGrid(data) {
     cell.style.height = cellSize + 'px';
     gridEl.appendChild(cell);
   }
+
+  // Show eating.gif during search phase
+  const exprImg = document.getElementById('resultExpression');
+  exprImg.src = '/resources/expressions/eating.gif';
+  exprImg.style.display = '';
+  exprImg.style.animation = 'none';
+  exprImg.offsetHeight;
+  exprImg.style.animation = 'expressionBounce 0.5s ease';
+
+  // Hide value & item list until animation completes
+  document.getElementById('resultValue').textContent = '?';
+  document.getElementById('resultItems').classList.add('hidden');
+  document.getElementById('resultProfit').classList.add('hidden');
 
   // Create item slots (absolutely positioned over cells)
   const slots = [];
@@ -176,35 +184,39 @@ function buildSafeGrid(data) {
     slots.push({ slot, item, img });
   });
 
-  // Animate reveal sequence
+  // Animate reveal sequence (left→right, top→bottom order from backend)
   let cumDelay = 0;
-  const EXPR_DELAY = 500; // extra delay before expression appears
+  const GAP = 150; // gap between item reveals
 
   slots.forEach(({ slot, item, img }) => {
     const searchDur = item.search_duration_ms || 600;
 
-    // Phase 1: searching (already has .searching class)
-    // Phase 2: reveal after searchDur
+    // Reveal after search duration
     setTimeout(() => {
       slot.classList.remove('searching');
       slot.classList.add('revealed');
       img.style.display = '';
     }, cumDelay + searchDur);
 
-    cumDelay += searchDur + 150; // 150ms gap between items
+    cumDelay += searchDur + GAP;
   });
 
-  // Hide expression during search, show after all revealed
-  const exprImg = document.getElementById('resultExpression');
-  exprImg.style.display = 'none';
+  // After last item revealed: switch eating.gif → result expression, then fire callback
+  const EXPR_DELAY = 400;
   const totalAnim = cumDelay + EXPR_DELAY;
   setTimeout(() => {
-    exprImg.style.display = '';
-    // Re-trigger animation
+    // Switch to result expression
+    const resultExpr = data.expression || 'cry';
+    exprImg.src = `/resources/expressions/${resultExpr}.png`;
     exprImg.style.animation = 'none';
     exprImg.offsetHeight;
     exprImg.style.animation = 'expressionBounce 0.5s ease';
   }, totalAnim);
+
+  // Fire completion callback a bit after expression switches
+  setTimeout(() => {
+    if (onComplete) onComplete();
+  }, totalAnim + 600);
 }
 
 function startCooldown(seconds) {

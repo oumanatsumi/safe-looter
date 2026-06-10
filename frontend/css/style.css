@@ -141,11 +141,13 @@ html, body {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .item-slot.searching {
-  background: repeating-linear-gradient(
-    45deg, rgba(0,0,0,0.6), rgba(0,0,0,0.6) 4px,
-    rgba(50,50,50,0.6) 4px, rgba(50,50,50,0.6) 8px
-  );
+  background: rgba(30,30,30,0.85) !important;
 }
+/* Quality-colored border visible during search */
+.item-slot.level-blue.searching  { border-color: var(--blue) !important; }
+.item-slot.level-purple.searching { border-color: var(--purple) !important; }
+.item-slot.level-gold.searching   { border-color: var(--gold) !important; box-shadow: 0 0 8px rgba(255,215,0,0.2); }
+.item-slot.level-red.searching    { border-color: var(--red) !important; box-shadow: 0 0 12px rgba(229,57,53,0.25); }
 .item-slot.searching::after {
   content: '';
   position: absolute;

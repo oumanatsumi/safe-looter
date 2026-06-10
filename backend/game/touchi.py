@@ -322,9 +322,8 @@ def build_touchi_result(placed_items, grid_size, region_w, region_h):
             "search_duration_ms": _search_duration_ms(item["level"]),
         })
 
-    # Sort by reveal order: highest level first (red → gold → purple → blue)
-    level_order = {"red": 0, "gold": 1, "purple": 2, "blue": 3}
-    items_data.sort(key=lambda x: (level_order.get(x["level"], 9), -x["value"]))
+    # Sort by reveal order: left→right, top→bottom (by grid position)
+    items_data.sort(key=lambda x: (x["y"], x["x"]))
 
     expression = _determine_expression(placed_items)
     total_value = sum(p["item"]["value"] for p in placed_items)

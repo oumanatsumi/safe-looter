@@ -133,6 +133,12 @@ sudo nginx -t && sudo systemctl reload nginx
 | GET | `/api/leaderboard` | 排行榜 |
 | GET/POST | `/api/admin/config` | 管理配置 |
 
-## 📄 License
+## 📄 版权与致谢
 
-MIT
+本项目**无任何商业行为，仅供学习交流**。
+
+灵感和部分资源来自 [sa1guu/astrbot_plugin_touchi](https://github.com/sa1guu/astrbot_plugin_touchi)，感谢原作者。
+
+如有侵权问题请及时告知，将立即处理。
+
+MIT License

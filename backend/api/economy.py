@@ -18,6 +18,13 @@ def get_user_economy(user_id):
     if eco["menggong_active"] and now < eco["menggong_end_time"]:
         menggong_remaining = eco["menggong_end_time"] - now
 
+    # Touchi cooldown
+    last_time = eco.get("last_touchi_time", 0)
+    last_cd = eco.get("touchi_cooldown", 0)
+    cd_remaining = 0
+    if last_time and last_cd:
+        cd_remaining = max(0, last_time + last_cd - now)
+
     return jsonify({
         "ok": True,
         "warehouse_value": eco["warehouse_value"],
@@ -28,6 +35,7 @@ def get_user_economy(user_id):
         "auto_touchi_active": bool(eco.get("auto_touchi_active")),
         "auto_touchi_start_time": eco.get("auto_touchi_start_time", 0),
         "auto_touchi_red_count": eco.get("auto_touchi_red_count", 0),
+        "touchi_cooldown_remaining": cd_remaining,
     })
 
 

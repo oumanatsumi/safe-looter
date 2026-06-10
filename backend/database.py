@@ -107,6 +107,16 @@ def init_db(db_path):
                 "ALTER TABLE user_last_touchi ADD COLUMN total_value INTEGER DEFAULT 0")
         except:
             pass
+        try:
+            conn.execute(
+                "ALTER TABLE user_economy ADD COLUMN last_touchi_time INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            conn.execute(
+                "ALTER TABLE user_economy ADD COLUMN touchi_cooldown INTEGER DEFAULT 0")
+        except:
+            pass
 
         conn.commit()
     finally:

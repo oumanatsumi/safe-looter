@@ -46,6 +46,18 @@ def do_touchi():
     if eco.get("auto_touchi_active"):
         return jsonify({"ok": False, "message": "自动偷吃进行中，无法手动偷吃。请先关闭自动偷吃。"})
 
+    # Check cooldown
+    last_time = eco.get("last_touchi_time", 0)
+    last_cd = eco.get("touchi_cooldown", 0)
+    if last_time and last_cd:
+        remaining = last_time + last_cd - now
+        if remaining > 0:
+            return jsonify({
+                "ok": False,
+                "message": f"冷却中，剩余 {remaining} 秒",
+                "cooldown_remaining": remaining,
+            })
+
     # Generate the safe box
     normal_rates, menggong_rates, (cd_min, cd_max) = _load_game_rates()
     time_multiplier = random.uniform(0.6, 1.4)
@@ -154,6 +166,15 @@ def do_touchi():
 
     display_value = final_value if triggered and evt_type != "genius_kick" else total_value
 
+    wait_time = int(random.uniform(cd_min, cd_max) * cooldown_modifier)
+
+    # Persist cooldown to database (survives browser refresh)
+    def _save_cd(c):
+        c.execute(
+            "UPDATE user_economy SET last_touchi_time=?, touchi_cooldown=? WHERE user_id=?",
+            (now, wait_time, user_id))
+    write_with_retry(DB_PATH, _save_cd)
+
     return jsonify({
         "ok": True,
         "image_url": f"/{rel_path}",
@@ -171,5 +192,5 @@ def do_touchi():
         } if triggered else None,
         "menggong_active": menggong,
         "cooldown_modifier": cooldown_modifier,
-        "wait_time": int(random.uniform(cd_min, cd_max) * cooldown_modifier),
+        "wait_time": wait_time,
     })

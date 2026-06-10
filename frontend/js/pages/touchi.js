@@ -1,5 +1,6 @@
 /* ── Touchi Page ── */
 
+const CD_STORAGE_KEY = 'touchi_cooldown_end';
 let touchiCooldown = 0;
 let countdownInterval = null;
 let revealTimeout = null;
@@ -10,6 +11,40 @@ function initTouchi() {
     if (touchiCooldown > 0) return;
     doTouchi();
   });
+
+  // Restore cooldown on page load
+  restoreCooldown();
+}
+
+/** Restore cooldown from backend (authoritative) + localStorage (instant) */
+async function restoreCooldown() {
+  const uid = App.getUserId();
+
+  // 1. Instant: check localStorage for saved cooldown
+  const savedEnd = localStorage.getItem(CD_STORAGE_KEY + '_' + uid);
+  if (savedEnd) {
+    const remaining = Math.ceil((parseInt(savedEnd) - Date.now()) / 1000);
+    if (remaining > 0) {
+      startCooldown(remaining);
+    } else {
+      localStorage.removeItem(CD_STORAGE_KEY + '_' + uid);
+    }
+  }
+
+  // 2. Authoritative: ask backend (handles cross-device / cleared localStorage)
+  try {
+    const data = await API.economy(uid);
+    if (data.ok && data.touchi_cooldown_remaining) {
+      const backendRemaining = data.touchi_cooldown_remaining;
+      if (backendRemaining > 0) {
+        startCooldown(backendRemaining);
+        // Sync localStorage with backend
+        localStorage.setItem(CD_STORAGE_KEY + '_' + uid, Date.now() + backendRemaining * 1000);
+      }
+    }
+  } catch (e) {
+    // Silently ignore — localStorage fallback is sufficient
+  }
 }
 
 async function doTouchi() {
@@ -108,6 +143,10 @@ function startCooldown(seconds) {
   const timer = document.getElementById('cooldownTimer');
   const total = seconds;
 
+  // Persist to localStorage (survives browser refresh)
+  const uid = App.getUserId();
+  localStorage.setItem(CD_STORAGE_KEY + '_' + uid, Date.now() + seconds * 1000);
+
   btn.disabled = true;
   overlay.classList.remove('hidden');
   circle.style.strokeDashoffset = '0';
@@ -125,6 +164,7 @@ function startCooldown(seconds) {
       clearInterval(countdownInterval);
       overlay.classList.add('hidden');
       btn.disabled = false;
+      localStorage.removeItem(CD_STORAGE_KEY + '_' + uid);
       return;
     }
     touchiCooldown--;

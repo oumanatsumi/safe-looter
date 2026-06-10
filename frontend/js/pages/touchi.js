@@ -38,7 +38,6 @@ async function restoreCooldown() {
       const backendRemaining = data.touchi_cooldown_remaining;
       if (backendRemaining > 0) {
         startCooldown(backendRemaining);
-        // Sync localStorage with backend
         localStorage.setItem(CD_STORAGE_KEY + '_' + uid, Date.now() + backendRemaining * 1000);
       }
     }
@@ -55,7 +54,6 @@ async function doTouchi() {
 
   btn.disabled = true;
   resultArea.classList.add('hidden');
-  if (revealTimeout) clearTimeout(revealTimeout);
 
   // Loading dots animation
   let dots = 0;
@@ -89,11 +87,17 @@ async function doTouchi() {
       eventDiv.classList.add('hidden');
     }
 
-    // Show GIF
-    const gif = document.getElementById('resultGif');
-    gif.src = data.image_url;
+    // Build safe grid with items
+    buildSafeGrid(data);
 
-    // Prepare items HTML (hidden initially)
+    // Show expression
+    const exprImg = document.getElementById('resultExpression');
+    const expressions = { eat: 'eat', happy: 'happy', cry: 'cry' };
+    const exprKey = expressions[data.expression] || 'cry';
+    exprImg.src = `/resources/expressions/${exprKey}.png`;
+    exprImg.style.display = '';
+
+    // Update value info
     document.getElementById('resultValue').textContent = fmt(data.total_value);
 
     const profitEl = document.getElementById('resultProfit');
@@ -104,6 +108,7 @@ async function doTouchi() {
       profitEl.classList.add('hidden');
     }
 
+    // Build item cards below the grid
     const itemsDiv = document.getElementById('resultItems');
     itemsDiv.innerHTML = data.items.map(it => `
       <div class="result-item level-${it.level}">
@@ -112,17 +117,7 @@ async function doTouchi() {
         <span class="item-value" style="color:${levelColor(it.level)}">${fmt(it.value)}</span>
       </div>
     `).join('');
-    // Hide items during GIF first playthrough
-    itemsDiv.classList.add('hidden');
-    document.getElementById('resultValue').parentElement.querySelector('.result-profit')?.classList?.add('hidden');
 
-    // Reveal items after GIF finishes first loop
-    const gifDuration = data.gif_duration_ms || 6000;
-    revealTimeout = setTimeout(() => {
-      itemsDiv.classList.remove('hidden');
-    }, gifDuration);
-
-    // Show result area immediately (GIF visible, items hidden)
     resultArea.classList.remove('hidden');
 
     // Refresh header economy
@@ -133,6 +128,83 @@ async function doTouchi() {
     showToast('网络错误，请重试', true);
     btn.disabled = false;
   }
+}
+
+/** Build the CSS grid with item slots and animate reveal sequence */
+function buildSafeGrid(data) {
+  const gridEl = document.getElementById('safeGrid');
+  const gridSize = data.grid_size || 2;
+  const cellSize = Math.min(100, Math.floor(300 / gridSize));
+  const items = data.items || [];
+
+  // Configure grid
+  gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+  gridEl.style.gridTemplateRows = `repeat(${gridSize}, ${cellSize}px)`;
+  gridEl.style.width = (gridSize * cellSize + (gridSize - 1) * 2 + 4) + 'px';
+  gridEl.style.height = (gridSize * cellSize + (gridSize - 1) * 2 + 4) + 'px';
+  gridEl.style.position = 'relative';
+
+  // Generate background cells
+  gridEl.innerHTML = '';
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'grid-cell';
+    cell.style.width = cellSize + 'px';
+    cell.style.height = cellSize + 'px';
+    gridEl.appendChild(cell);
+  }
+
+  // Create item slots (absolutely positioned over cells)
+  const slots = [];
+  items.forEach((item, idx) => {
+    const slot = document.createElement('div');
+    slot.className = `item-slot searching level-${item.level}`;
+    slot.style.left = (item.x * cellSize + item.x * 2 + 2) + 'px';
+    slot.style.top = (item.y * cellSize + item.y * 2 + 2) + 'px';
+    slot.style.width = (item.width * cellSize + (item.width - 1) * 2) + 'px';
+    slot.style.height = (item.height * cellSize + (item.height - 1) * 2) + 'px';
+    slot.style.zIndex = (idx + 1);
+
+    // Preload image (hidden until reveal)
+    const img = document.createElement('img');
+    img.src = item.image_url;
+    img.alt = item.name;
+    img.style.display = 'none';
+    slot.appendChild(img);
+
+    gridEl.appendChild(slot);
+    slots.push({ slot, item, img });
+  });
+
+  // Animate reveal sequence
+  let cumDelay = 0;
+  const EXPR_DELAY = 500; // extra delay before expression appears
+
+  slots.forEach(({ slot, item, img }) => {
+    const searchDur = item.search_duration_ms || 600;
+
+    // Phase 1: searching (already has .searching class)
+    // Phase 2: reveal after searchDur
+    setTimeout(() => {
+      slot.classList.remove('searching');
+      slot.classList.add('revealed');
+      img.style.display = '';
+    }, cumDelay + searchDur);
+
+    cumDelay += searchDur + 150; // 150ms gap between items
+  });
+
+  // Hide expression during search, show after all revealed
+  const exprImg = document.getElementById('resultExpression');
+  exprImg.style.display = 'none';
+  const totalAnim = cumDelay + EXPR_DELAY;
+  setTimeout(() => {
+    exprImg.style.display = '';
+    // Re-trigger animation
+    exprImg.style.animation = 'none';
+    exprImg.offsetHeight;
+    exprImg.style.animation = 'expressionBounce 0.5s ease';
+  }, totalAnim);
 }
 
 function startCooldown(seconds) {

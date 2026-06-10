@@ -44,9 +44,18 @@
 
     <div id="resultArea" class="result-area hidden">
       <div id="eventMessage" class="event-msg hidden"></div>
-      <img id="resultGif" class="result-gif" src="" alt="偷吃结果">
+      <div class="result-container">
+        <div class="expression-area" id="expressionArea">
+          <img id="resultExpression" class="expression-img" src="" alt="">
+        </div>
+        <div class="safe-grid-wrapper">
+          <div class="safe-grid" id="safeGrid">
+            <!-- Dynamically filled with grid cells and item slots -->
+          </div>
+        </div>
+      </div>
       <div class="result-info">
-        <div class="result-value">总价值: <strong id="resultValue">0</strong></div>
+        <div class="result-value">总价值: <strong id="resultValue">0</strong> 哈夫币</div>
         <div class="result-profit hidden" id="resultProfit">本次收益: 0 哈夫币</div>
         <div class="result-items hidden" id="resultItems"></div>
       </div>

@@ -180,15 +180,105 @@ journalctl -u touchi -f
 tail -f /var/log/nginx/touchi.access.log
 tail -f /var/log/nginx/touchi.error.log
 
+# 查看 gunicorn 错误日志
+tail -f /var/log/touchi/gunicorn-error.log
+
 # 数据库备份（路径以 config.yaml 中的 db_path 为准）
 DB_PATH=$(grep 'db_path:' /opt/touchi/backend/config.yaml | sed 's/.*: //')
 cp "$DB_PATH" "$DB_PATH.bak.$(date +%Y%m%d)"
-
-# 更新部署
-# 1. 上传新的 tar.gz
-# 2. 解压覆盖
-# 3. sudo systemctl restart touchi
 ```
+
+## 更新部署（代码变更后重新上线）
+
+### 流程概览
+
+```
+本地开发 → 打包 → 上传服务器 → 解压覆盖 → 按需重载配置 → 重启服务
+```
+
+### 步骤
+
+**1. 本地 — 打包**
+
+```bash
+cd E:/proj/touchi
+bash workspace/package.sh
+# 产物: workspace/packages/touchi-backend.tar.gz
+#       workspace/packages/touchi-frontend.tar.gz
+```
+
+**2. 上传到服务器**
+
+```bash
+scp workspace/packages/touchi-backend.tar.gz  root@121.43.243.130:/opt/touchi/
+scp workspace/packages/touchi-frontend.tar.gz root@121.43.243.130:/opt/touchi/
+```
+
+**3. 服务器 — 解压覆盖**
+
+```bash
+# 后端
+cd /opt/touchi
+tar -xzf touchi-backend.tar.gz -C backend/
+
+# 前端（纯静态文件，有改动才做）
+tar -xzf touchi-frontend.tar.gz -C frontend/
+```
+
+**4. 服务器 — 配置文件（仅首次或配置变更时需要）**
+
+以下文件首次部署已就位，**后续代码更新通常无需重做**。如果这些文件有改动才执行：
+
+```bash
+# systemd service（改了端口/路径才需更新）
+sudo cp /opt/touchi/workspace/touchi.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+# nginx 配置（改了路由/端口才需更新）
+sudo cp /opt/touchi/workspace/touchi.oumanatsumi.cn.conf /etc/nginx/conf.d/touchi.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**5. 服务器 — 重启后端**
+
+```bash
+# Python 依赖有变更时先装
+cd /opt/touchi/backend
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
+
+# 重启
+sudo systemctl restart touchi
+sudo systemctl status touchi
+```
+
+**6. 验证**
+
+```bash
+curl http://127.0.0.1:5001/api/leaderboard
+# 浏览器访问 https://touchi.oumanatsumi.cn
+```
+
+### 变更类型速查
+
+| 改了什么 | 需要做的 |
+|---------|---------|
+| 仅 Python 代码（game/api） | 重新打包后端 → 上传解压 → `systemctl restart touchi` |
+| 仅前端（HTML/CSS/JS） | 重新打包前端 → 上传解压 → 清浏览器缓存 |
+| 新增/修改 Python 依赖 | 上传后端包 + 手动 `pip install -r requirements.txt` + 重启 |
+| 改了端口 | 改 `config.yaml` + `touchi.service` + nginx conf，三处全部重载 |
+| 新增道具图片 | 放入 `resources/items/` 后重新打包后端上传 |
+
+### 常见问题
+
+| 现象 | 检查 |
+|------|------|
+| 网页打不开/超时 | `sudo ss -tlnp \| grep :80`，确认 nginx 在监听；安全组放行 80 |
+| curl 后端 5001 拒绝连接 | `sudo systemctl status touchi`，`journalctl -u touchi -n 20` |
+| gunicorn 日志权限报错 | `sudo chown nginx:nginx /var/log/touchi` |
+| SELinux 相关错误 | `sudo setsebool -P httpd_can_network_connect on` |
+| DNS 解析后仍超时 | 等 1-2 分钟 DNS 传播，或用 `curl -H "Host: touchi.oumanatsumi.cn" http://121.43.243.130/` 绕过 DNS 测试 |
 
 ## RHEL/CentOS vs Debian 差异速查
 

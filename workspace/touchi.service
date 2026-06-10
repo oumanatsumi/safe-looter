@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=nginx
+Group=nginx
 WorkingDirectory=/opt/touchi/backend
 ExecStart=/opt/touchi/backend/venv/bin/gunicorn wsgi:app \
     --workers 2 \

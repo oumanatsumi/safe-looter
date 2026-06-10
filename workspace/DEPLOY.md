@@ -37,6 +37,7 @@ sudo apt install -y nginx python3 python3-venv python3-pip
 sudo mkdir -p /opt/touchi/backend/output
 sudo mkdir -p /opt/touchi/frontend
 sudo mkdir -p /var/log/touchi
+sudo chown nginx:nginx /var/log/touchi
 ```
 
 ## 2. 部署后端

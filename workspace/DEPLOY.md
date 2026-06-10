@@ -6,7 +6,7 @@
 
 ```
 浏览器 ──→ Nginx (:80) ──→ 前端静态文件 (/opt/touchi/frontend)
-                          ──→ /api/*  ──→ Gunicorn (:5000) ──→ Flask
+                          ──→ /api/*  ──→ Gunicorn (:5001) ──→ Flask
                           ──→ /output/*     → 后端生成的 GIF
                           ──→ /resources/*  → 道具图标、表情
 ```
@@ -56,7 +56,7 @@ deactivate
 # 确认配置（按需修改）
 vim /opt/touchi/backend/config.yaml
 #   host: 127.0.0.1       ← 只监听本地，由 nginx 代理
-#   port: 5000
+#   port: 5001
 #   admin_token: 改成你的密码
 #   db_path: 数据库路径，可指向项目外（例 /opt/astrbot/.../collection.db）
 #   items_dir / expressions_dir / output_dir: 保持默认相对路径即可
@@ -98,7 +98,7 @@ sudo chown -R nginx:nginx /opt/touchi/frontend
 
 **RHEL/CentOS：**
 ```bash
-sudo cp workspace/touchi.oumanatsumi.cn.conf /etc/nginx/conf.d/touchi.conf
+sudo cp touchi.oumanatsumi.cn.conf /etc/nginx/conf.d/touchi.conf
 ```
 
 **Debian/Ubuntu：**
@@ -121,7 +121,7 @@ sudo systemctl reload nginx
 
 ```bash
 # 复制 service 文件
-sudo cp workspace/touchi.service /etc/systemd/system/
+sudo cp touchi.service /etc/systemd/system/
 
 # 启动服务
 sudo systemctl daemon-reload
@@ -159,7 +159,7 @@ sudo systemctl status nginx
 sudo systemctl status touchi
 
 # 测试 API
-curl http://127.0.0.1:5000/api/leaderboard
+curl http://127.0.0.1:5001/api/leaderboard
 curl https://touchi.oumanatsumi.cn/api/leaderboard
 
 # 打开浏览器访问

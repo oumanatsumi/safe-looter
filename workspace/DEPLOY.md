@@ -9,6 +9,15 @@
                           ──→ /resources/*  → 道具图标、表情
 ```
 
+## 前置要求
+
+- **Python >= 3.7**（建议 3.9+）
+- 如果 Python 版本过旧（如 3.6），需先升级：
+  ```bash
+  sudo apt install -y python3.9 python3.9-venv
+  # 然后用 python3.9 替代 python3 创建虚拟环境
+  ```
+
 ## 1. 服务器准备
 
 ```bash

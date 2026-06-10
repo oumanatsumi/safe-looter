@@ -56,7 +56,7 @@ safe-looter/
 │       ├── app.js          # 应用控制器
 │       └── pages/          # 偷吃、图鉴、仓库、管理
 └── workspace/              # 部署相关
-    ├── DEPLOY.md           # 部署指南
+    ├── DEPLOY.md           # 部署指南 + 更新流程 + 故障排查
     ├── touchi.oumanatsumi.cn.conf  # Nginx 配置
     ├── touchi.service      # Systemd 服务
     └── package.sh          # 打包脚本
@@ -70,21 +70,23 @@ safe-looter/
 cd backend
 pip install -r requirements.txt
 python app.py
-# 打开 http://localhost:5000
+# 打开 http://localhost:5001
 ```
 
 ### 生产部署
 
-详见 [DEPLOY.md](workspace/DEPLOY.md)，架构：
+在线地址：**[touchi.oumanatsumi.cn](https://touchi.oumanatsumi.cn)**
+
+部署架构：
 
 ```
 浏览器 → Nginx :80 → /            → 前端静态文件
-                    → /api/*       → Gunicorn :5000 → Flask
+                    → /api/*       → Gunicorn :5001 → Flask
                     → /output/*    → 生成的 GIF
                     → /resources/* → 道具图标
 ```
 
-快速部署：
+完整部署指南、更新流程和故障排查见 **[DEPLOY.md](workspace/DEPLOY.md)**。
 
 ```bash
 # 后端
@@ -92,10 +94,14 @@ cd /opt/touchi && tar -xzf touchi-backend.tar.gz -C backend/
 cd backend && python3 -m venv venv && pip install -r requirements.txt
 sudo systemctl enable --now touchi
 
-# 前端 + Nginx
+# 前端（Nginx 直接 serve）
 tar -xzf touchi-frontend.tar.gz -C frontend/
-sudo cp workspace/touchi.oumanatsumi.cn.conf /etc/nginx/sites-enabled/
-sudo systemctl reload nginx
+# RHEL/CentOS:
+sudo cp workspace/touchi.oumanatsumi.cn.conf /etc/nginx/conf.d/touchi.conf
+# Debian/Ubuntu:
+sudo cp workspace/touchi.oumanatsumi.cn.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/touchi.oumanatsumi.cn.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## 🔧 配置
@@ -104,10 +110,12 @@ sudo systemctl reload nginx
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
+| `port` | `5001` | 后端监听端口 |
 | `admin_token` | `不告诉你` | 管理员密码 |
 | `auto_touchi_interval` | `600` | 自动偷吃间隔（秒） |
 | `mengong_cost` | `3000000` | 猛攻消耗（哈夫币） |
 | `default_grid_size` | `2` | 初始背包格子 |
+| `db_path` | `data/collection.db` | 数据库路径，可指向项目外 |
 
 游戏参数（爆率、冷却等）通过管理员面板实时修改，存储在 SQLite 中。
 

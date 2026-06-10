@@ -1,5 +1,5 @@
-flask>=2.0
-Pillow>=8.0
-apscheduler>=3.9
-pyyaml>=5.0
-gunicorn>=20.0
+flask>=3.0
+Pillow>=10.0
+apscheduler>=3.10
+pyyaml>=6.0
+gunicorn>=22.0

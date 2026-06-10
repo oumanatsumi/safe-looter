@@ -44,7 +44,7 @@ tar -xzf touchi-backend.tar.gz -C backend/
 
 # 创建 Python 虚拟环境
 cd /opt/touchi/backend
-python3 -m venv venv
+python3.8 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate

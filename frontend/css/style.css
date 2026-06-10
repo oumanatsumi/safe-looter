@@ -142,12 +142,9 @@ html, body {
 }
 .item-slot.searching {
   background: rgba(30,30,30,0.85) !important;
+  border: 2px solid #555 !important;
+  box-shadow: none !important;
 }
-/* Quality-colored border visible during search */
-.item-slot.level-blue.searching  { border-color: var(--blue) !important; }
-.item-slot.level-purple.searching { border-color: var(--purple) !important; }
-.item-slot.level-gold.searching   { border-color: var(--gold) !important; box-shadow: 0 0 8px rgba(255,215,0,0.2); }
-.item-slot.level-red.searching    { border-color: var(--red) !important; box-shadow: 0 0 12px rgba(229,57,53,0.25); }
 .item-slot.searching::after {
   content: '';
   position: absolute;

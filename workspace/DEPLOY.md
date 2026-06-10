@@ -33,8 +33,7 @@ sudo apt install -y nginx python3 python3-venv python3-pip
 
 **通用操作：**
 ```bash
-# 创建目录结构
-sudo mkdir -p /opt/touchi/backend/data
+# 创建目录结构（output 用于存放生成的 GIF）
 sudo mkdir -p /opt/touchi/backend/output
 sudo mkdir -p /opt/touchi/frontend
 sudo mkdir -p /var/log/touchi
@@ -59,24 +58,30 @@ vim /opt/touchi/backend/config.yaml
 #   host: 127.0.0.1       ← 只监听本地，由 nginx 代理
 #   port: 5000
 #   admin_token: 改成你的密码
-#   db_path: data/collection.db
+#   db_path: 数据库路径，可指向项目外（例 /opt/astrbot/.../collection.db）
+#   items_dir / expressions_dir / output_dir: 保持默认相对路径即可
 
-# 创建空的数据库文件
-touch /opt/touchi/backend/data/collection.db
+# 如 db_path 指向了外部目录，需要额外创建并赋权
+# 例：db_path: /opt/astrbot/data/plugin_data/astrbot_plugin_touchi/collection.db
+sudo mkdir -p /opt/astrbot/data/plugin_data/astrbot_plugin_touchi
 
 # 设置权限（RHEL/CentOS 用 nginx 用户，Debian/Ubuntu 用 www-data）
 sudo chown -R nginx:nginx /opt/touchi
 sudo chmod -R 755 /opt/touchi
-# 确保 nginx 能写 data/ 和 output/
-sudo chmod 770 /opt/touchi/backend/data
+# 确保 nginx 能写 output/
 sudo chmod 770 /opt/touchi/backend/output
+
+# 赋予外部数据库目录权限（按你的实际 db_path 调整）
+sudo chown -R nginx:nginx /opt/astrbot/data/plugin_data/astrbot_plugin_touchi
+sudo chmod 770 /opt/astrbot/data/plugin_data/astrbot_plugin_touchi
 ```
 
 > **注意**：如果 SELinux 处于 enforcing 模式，需要放行：
 > ```bash
 > sudo setsebool -P httpd_can_network_connect on
-> sudo chcon -R -t httpd_sys_rw_content_t /opt/touchi/backend/data
 > sudo chcon -R -t httpd_sys_rw_content_t /opt/touchi/backend/output
+> # 如果 db_path 指向外部，同样需要放行
+> sudo chcon -R -t httpd_sys_rw_content_t /opt/astrbot/data/plugin_data/astrbot_plugin_touchi
 > ```
 
 ## 3. 部署前端
@@ -174,8 +179,9 @@ journalctl -u touchi -f
 tail -f /var/log/nginx/touchi.access.log
 tail -f /var/log/nginx/touchi.error.log
 
-# 数据库备份
-cp /opt/touchi/backend/data/collection.db /opt/touchi/backend/data/collection.db.bak.$(date +%Y%m%d)
+# 数据库备份（路径以 config.yaml 中的 db_path 为准）
+DB_PATH=$(grep 'db_path:' /opt/touchi/backend/config.yaml | sed 's/.*: //')
+cp "$DB_PATH" "$DB_PATH.bak.$(date +%Y%m%d)"
 
 # 更新部署
 # 1. 上传新的 tar.gz

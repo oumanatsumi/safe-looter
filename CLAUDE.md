@@ -1,83 +1,98 @@
-# 鼠鼠偷吃 (touchi) — 三角洲行动
+# 鼠鼠偷吃 (safe-looter) — 三角洲行动
 
-Web 小游戏，模拟"三角洲行动"中的偷吃（摸金）玩法。后端 Python Flask + 前端原生 HTML/CSS/JS SPA。
+摸金抽卡 Web 小游戏。后端 Python Flask + 前端原生 HTML/CSS/JS SPA，纯前端 CSS Grid 渲染结果（无服务端 GIF 生成）。
+
+在线地址: https://touchi.oumanatsumi.cn
+仓库: https://github.com/oumanatsumi/safe-looter
 
 ## 项目结构
 
 ```
 touchi/
 ├── backend/
-│   ├── app.py              # Flask 工厂函数，注册蓝图、静态文件路由
-│   ├── config.py            # 配置加载 (YAML + 环境变量覆盖)
-│   ├── config.yaml          # 默认配置文件
-│   ├── database.py          # SQLite 连接、表初始化、游戏配置读写
-│   ├── api/
-│   │   ├── touchi.py        # POST /api/touchi — 偷吃一次
-│   │   ├── collection.py    # GET/POST /api/collection — 图鉴
-│   │   ├── economy.py       # GET/POST /api/economy — 经济系统、升级、猛攻、自动偷吃
-│   │   ├── stats.py         # GET /api/stats — 统计
-│   │   └── admin.py         # GET/POST /api/admin — 管理员配置
+│   ├── app.py / wsgi.py       # Flask 应用 + Gunicorn 入口
+│   ├── config.py / config.yaml # 配置（环境变量 > YAML），端口 5001
+│   ├── database.py            # SQLite (WAL), write_with_retry(), 自动列迁移
+│   ├── api/                   # touchi / collection / economy / stats / admin
 │   ├── game/
-│   │   ├── touchi.py        # 偷吃核心逻辑：随机格子、物品生成、概率判定
-│   │   ├── economy.py       # 经济逻辑 + APScheduler 自动偷吃调度
-│   │   └── events.py        # 事件系统
-│   ├── data/                # SQLite 数据库文件 (collection.db)
-│   ├── resources/
-│   │   ├── items/           # 物品图标 PNG (蓝/紫/金/红品质)
-│   │   └── expressions/     # 鼠鼠表情 (cry/eat/happy/sousuo)
-│   └── output/              # 生成的偷吃结果 GIF
-└── frontend/
-    ├── index.html           # SPA 入口 (偷吃 / 图鉴 / 仓库 / 管理)
-    ├── css/style.css
-    └── js/
-        ├── app.js           # 应用入口、导航、初始化
-        ├── api.js           # API 请求封装
-        ├── utils.js         # 工具函数
-        └── pages/
-            ├── touchi.js    # 偷吃页面逻辑
-            ├── collection.js # 图鉴页面
-            ├── warehouse.js  # 仓库/特勤处/猛攻/自动偷吃
-            └── admin.js     # 管理员设置弹窗
+│   │   ├── touchi.py          # 物品加载、概率判定、网格布局、build_touchi_result()
+│   │   ├── economy.py         # 经济系统 + APScheduler 自动偷吃
+│   │   └── events.py          # 7 种随机事件（各 4% 概率）
+│   └── resources/             # items/(png) + expressions/(cry/eat/happy/sousuo/eating.gif)
+├── frontend/                  # 原生 JS SPA，无框架
+│   ├── index.html
+│   └── js/pages/              # touchi.js / collection.js / warehouse.js / admin.js
+└── workspace/                 # DEPLOY.md / nginx conf / systemd service / package.sh
 ```
 
-## 运行方式
+## 本地运行
 
 ```bash
-cd backend
-pip install -r requirements.txt
-python app.py
-# 监听 http://0.0.0.0:5000
+cd backend && pip install -r requirements.txt && python app.py
+# http://localhost:5001
 ```
 
-配置优先级：**环境变量 > config.yaml > 代码默认值**。关键环境变量：`TOUCHI_DB_PATH`, `TOUCHI_PORT`, `TOUCHI_HOST`, `ADMIN_TOKEN`。
+## 核心架构
 
-## 技术要点
+### 偷吃流程
+1. 前端 `POST /api/touchi` → 后端 `build_touchi_result()` 返回结构化 JSON
+2. 前端 `buildSafeGrid()` 构建 CSS Grid 安全箱 + 逐项揭晓动画
+3. 搜索阶段：灰框 + 搜索图标旋转 → 揭晓：品质色弹入 + 物品图片
+4. 全部揭晓后：eating.gif 切换为结果表情，底部展示物品列表
 
-- **数据库**：SQLite (WAL 模式)，路径 `backend/data/collection.db`。使用 `write_with_retry()` 处理并发写入锁。
-- **游戏配置**：存储在 `system_config` 表中（不是 YAML），通过 admin API 动态修改。默认值在 `database.py` 的 `GAME_CONFIG_DEFAULTS`。
-- **自动偷吃**：APScheduler 后台线程，在 `game/economy.py` 的 `start_scheduler()` 中启动。
-- **物品品质**：蓝/紫/金/红（blue/purple/gold/red），概率可在管理员面板调整。
-- **六套猛攻**：消耗 300 万哈夫币，持续 2 分钟，无蓝装、金红爆率翻倍。
-- **管理员 token**：默认 `admin123`，可在 `config.yaml` 或环境变量 `ADMIN_TOKEN` 修改。
-- **前端路由**：SPA，所有非 `/api/`、`/output/`、`/resources/` 路径都返回 `index.html`。
+### 概率系统
+- 普通模式: 蓝25% 紫42% 金28% 红5%（可通过 admin 面板改）
+- 猛攻模式: 蓝0% 紫45% 金45% 红10%
+- RARE_ITEMS（17个）概率 1/3，ULTRA_RARE_ITEMS（心、雷）概率 1/100
 
-## API 概述
+### 搜索时长 (ms)
+蓝 400 / 紫 600 / 金 1000 / 红 2500，物品间隔 150ms，揭晓顺序按坐标 (y,x) 从左到右从上到下
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/touchi` | 执行一次偷吃 |
-| GET | `/api/collection/<user_id>` | 获取用户图鉴 |
-| POST | `/api/collection` | 标记物品已发现 |
-| GET | `/api/economy/<user_id>` | 获取用户经济数据 |
-| POST | `/api/economy/upgrade` | 升级特勤处 |
-| POST | `/api/economy/menggong` | 激活猛攻 |
-| POST | `/api/economy/auto` | 切换自动偷吃 |
-| GET | `/api/stats/<user_id>` | 获取统计 |
-| GET | `/api/admin/config` | 获取当前配置 |
-| POST | `/api/admin/config` | 更新配置 (需 token) |
+### 冷却持久化
+双重防护：前端 localStorage + 后端 DB 列 `user_economy.last_touchi_time/touchi_cooldown`
 
-## 注意事项
+### API 响应（POST /api/touchi 成功时）
+```json
+{
+  "ok": true,
+  "items": [{"name","level","x","y","width","height","search_duration_ms","image_url","value"}],
+  "grid_size": 2, "region_width": 2, "region_height": 1,
+  "expression": "happy", "total_search_ms": 1800,
+  "total_value": 123456, "highest_level": "gold",
+  "event": {"triggered": true, "type": "...", "message": "..."} | null,
+  "wait_time": 90, "cooldown_modifier": 1.0
+}
+```
 
-- `config.yaml` 只包含静态配置；游戏参数（冷却时间、爆率等）存储在数据库 `system_config` 表中。
-- 自动偷吃调度器在 `create_app()` 时启动，持续运行在后台线程。
-- 前端的"上次偷吃结果"存在 `user_last_touchi` 表，以 JSON 存储物品列表。
+## 生产部署
+
+- **服务器**: Alibaba Cloud Linux 3.2104 (RHEL/CentOS 8+), Nginx + Gunicorn + Systemd
+- **用户**: `nginx`（非 www-data）
+- **Nginx 配置**: `/etc/nginx/conf.d/touchi.conf`（非 sites-enabled）
+- **后端端口**: 5001（仅 127.0.0.1，Nginx 代理 /api/*）
+- **数据库路径**: `/opt/astrbot/data/plugin_data/astrbot_plugin_touchi/collection.db`
+- **部署时注意**: `config.yaml` 已从打包中排除，不会覆盖生产配置
+
+### 更新部署流程
+```bash
+# 本地打包（config.yaml 不在包内）
+bash workspace/package.sh
+# 上传
+scp workspace/packages/touchi-backend.tar.gz root@121.43.243.130:/opt/touchi/
+scp workspace/packages/touchi-frontend.tar.gz root@121.43.243.130:/opt/touchi/
+# 服务器解压重启
+cd /opt/touchi && tar -xzf touchi-backend.tar.gz -C backend/
+tar -xzf touchi-frontend.tar.gz -C frontend/
+sudo systemctl restart touchi
+```
+
+### 常见问题
+- **前端没更新**: 浏览器 Ctrl+Shift+R 强制刷新
+- **网络错误但 API 正常**: 前端 JS 文件是旧版本
+- **日志权限**: `sudo chown nginx:nginx /var/log/touchi`
+- **SELinux**: `sudo setsebool -P httpd_can_network_connect on`
+- **DNS 超时**: 阿里云安全组放行 80 端口
+
+### 关键 commit 里程碑
+- `024b31e` 前端渲染重构：删除 300 行 Pillow GIF 代码，改为 CSS Grid 动画
+- `5bcec71` 冷却持久化修复（localStorage + DB 双重防护）
